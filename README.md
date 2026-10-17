@@ -4,11 +4,11 @@
 
 ## 当前阶段
 
-这是成员 A 的开发包，本地已基于 B 的 main（89b3625）保留全部历史建立功能分支，尚未推送远端。代码支持完整模型加载、校验和来源交接；当前演示模型仅由六条人工例句生成，不是 B 的正式模型，不代表正式效果。交接核查见 HANDOFF.md。
+项目保留 B 的 main（89b3625）历史，A 功能在 GitHub 草稿 PR #1 中。已拉取并校验 B 的 model-v1 与 v1/v2 数据，51 项本地测试全部通过；正式模型已通过 production 模式本地 HTTP 检查。交接核查见 HANDOFF.md。
 
 - A：应用、测试、Docker、GitHub Actions 和交付文档。
 - B：数据、DVC/Azure、训练、MLflow、模型及来源信息。
-- 待完成：B 源码/模型交接、Azure 配置、GitHub 仓库与分支保护、正式 CI/CD 运行、staging 持续部署。
+- 待完成：Azure 配置、GitHub 远端工件凭证与分支保护、正式环境发布、staging 持续部署。
 
 ## 本地运行（PowerShell）
 
@@ -49,9 +49,9 @@ Git Bash 激活方式为 `source .venv/Scripts/activate`，环境变量使用 `e
 
 B 交付 `.dvc/config`、`data/v1.dvc`、`data/v2.dvc`、`models/release.dvc`，实际数据和模型留在 DVC 远端。
 
-模型目录 `models/release/` 包含 model.joblib、metadata.json。元数据必须包含：artifact_kind=release、model_version、model_sha256、40 位 training_git_sha、dataset_hash、dataset_version、mlflow_run_id、非空 metrics。
+模型目录 `models/release/` 包含 model.joblib、metadata.json。正式元数据必须包含：model_version、model_sha256、40 位 training_git_sha、dataset_hash、dataset_version、mlflow_run_id、非空 metrics。可额外标记 artifact_kind=release。
 
-B 手册的 metadata 尚未包含 artifact_kind，应在正式交接时补上并重新更新模型指针。training_git_sha 必须来自训练 run，不能填写交付时的 HEAD。
+B 原工件没有 artifact_kind，加载器在完整来源校验后兼容此格式，仅在内存标记 release，不修改原文件或 DVC 指针。显式 ci-test/未知标记和不完整来源记录仍被拒绝。training_git_sha 必须来自训练 run，不能填写交付时的 HEAD。
 
 运行 `python -m scripts.verify_release --require-release` 验证。校验值不能证明来源可信，joblib 只加载团队可信存储的工件。
 
@@ -63,7 +63,7 @@ CI：PR 到 dev/staging/main，或这些分支收到 push，执行静态检查�
 
 Delivery：staging/main 的 push 重新验证该提交，依次拉取正式数据与模型、全量测试、生成环境文件、构建正式镜像、烟雾检查、推送 Docker Hub。staging/main 分别使用 staging/production 环境。失败不会发布。
 
-完整环境配置、镜像运行和回滚见 DEPLOYMENT.md。当前工作流是待接入配置，未声称已在 GitHub 成功运行。
+完整环境配置、镜像运行和回滚见 DEPLOYMENT.md。GitHub 的离线应用测试、Docker 构建与容器检查已成功运行；真实工件 job 仍需配置远端只读权限。尚未发布或部署正式环境。
 
 ## 课程要求
 

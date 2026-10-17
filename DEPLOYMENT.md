@@ -2,7 +2,7 @@
 
 ## 当前限制
 
-尚未连接团队 GitHub、真实 DVC 远端、Docker Hub 或 staging 主机。因此本文和工作流是可审查的交付配置；没有发布镜像，也没有部署任何外部服务。
+GitHub 与 PR 已接通，离线 CI 及测试镜像运行通过；正式 DVC 工件已在本机验证。GitHub 远端只读凭证、Azure、Docker Hub 与 staging 主机仍待配置；没有发布正式镜像或部署外部服务。
 
 ## GitHub 环境
 

@@ -60,3 +60,47 @@ def test_page_and_docs(client):
     assert client.get("/").status_code == 200
     assert "英文短信" in client.get("/").text
     assert client.get("/docs").status_code == 200
+
+
+@pytest.mark.parametrize("marker", [None, "release"])
+def test_complete_legacy_and_current_release_metadata(model_dir, marker):
+    path = model_dir / "metadata.json"
+    metadata = json.loads(path.read_text())
+    metadata.update(
+        model_version="release-contract-fixture",
+        training_git_sha="a" * 40,
+        dataset_hash="b" * 32 + ".dir",
+        dataset_version="dataset-v2",
+        mlflow_run_id="c" * 32,
+        metrics={"test_spam_f1": 0.9},
+    )
+    if marker is None:
+        metadata.pop("artifact_kind")
+    else:
+        metadata["artifact_kind"] = marker
+    path.write_text(json.dumps(metadata))
+    original = path.read_bytes()
+    predictor = Predictor(model_dir / "model.joblib", path, require_release=True)
+    assert predictor.metadata["artifact_kind"] == "release"
+    assert path.read_bytes() == original
+
+
+@pytest.mark.parametrize(
+    "missing", ["training_git_sha", "dataset_hash", "mlflow_run_id", "metrics"]
+)
+def test_legacy_metadata_cannot_bypass_provenance(model_dir, missing):
+    path = model_dir / "metadata.json"
+    metadata = json.loads(path.read_text())
+    metadata.pop("artifact_kind")
+    metadata.update(
+        model_version="release-contract-fixture",
+        training_git_sha="a" * 40,
+        dataset_hash="b" * 32 + ".dir",
+        dataset_version="dataset-v2",
+        mlflow_run_id="c" * 32,
+        metrics={"test_spam_f1": 0.9},
+    )
+    metadata.pop(missing)
+    path.write_text(json.dumps(metadata))
+    with pytest.raises(ValueError):
+        Predictor(model_dir / "model.joblib", path, require_release=True)

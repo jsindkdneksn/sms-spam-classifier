@@ -19,8 +19,12 @@ def verify_metadata(model_path: Path, metadata_path: Path, require_release: bool
     if meta.get("model_sha256") != digest:
         raise ValueError("Model checksum mismatch")
     if require_release:
-        if meta.get("artifact_kind") != "release":
-            raise ValueError("Production requires artifact_kind=release")
+        # B's original DVC release predates artifact_kind. Accept that schema only
+        # after the same full provenance checks, without changing the hashed files.
+        if meta.get("artifact_kind") not in (None, "release") or meta["model_version"].startswith(
+            "ci-test"
+        ):
+            raise ValueError("Production rejects test or unknown artifacts")
         if not re.fullmatch(r"[0-9a-f]{40}", str(meta.get("training_git_sha", ""))):
             raise ValueError("Missing actual training commit SHA")
         for key in ("dataset_hash", "dataset_version", "mlflow_run_id"):
@@ -29,6 +33,7 @@ def verify_metadata(model_path: Path, metadata_path: Path, require_release: bool
                 raise ValueError(f"Missing provenance: {key}")
         if not isinstance(meta.get("metrics"), dict) or not meta["metrics"]:
             raise ValueError("Missing evaluation metrics")
+        meta.setdefault("artifact_kind", "release")
     return meta
 
 
