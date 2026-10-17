@@ -1,9 +1,14 @@
 """ml/data_pipeline.py —— 原始CSV -> 统一字段 + 防泄漏划分"""
-import argparse, json, random, re
+
+import argparse
+import json
+import random
+import re
 from collections import Counter
 from pathlib import Path
 
 LABELS = ("ham", "spam")
+
 
 def read_raw(csv_path: str):
     """读取原始文件。已知格式：每行整体被双引号包裹，行内 label\ttext。"""
@@ -27,12 +32,14 @@ def read_raw(csv_path: str):
             rows.append((text, label))
     return rows, skipped
 
+
 def norm_key(text: str) -> str:
     """生成内容分组键：仅用于识别重复/防泄漏，不做激进清洗。"""
     t = text.lower()
     t = re.sub(r"https?://\S+|www\.\S+", "<URL>", t)
     t = re.sub(r"[\W_]+", " ", t)
     return " ".join(t.split())
+
 
 def main():
     ap = argparse.ArgumentParser()
@@ -43,13 +50,13 @@ def main():
 
     rows, skipped = read_raw(args.input)
     print(f"[统计] 有效样本={len(rows)}  跳过行={skipped}")
-    print(f"[统计] 标签分布={Counter(l for _, l in rows)}")
+    print(f"[统计] 标签分布={Counter(label for _, label in rows)}")
 
     # 冲突标签核查：同一分组键出现不同标签则记录并整组剔除（本数据实测为 0 组）
     groups = {}
     for text, label in rows:
         groups.setdefault(norm_key(text), []).append((text, label))
-    conflicts = [k for k, v in groups.items() if len({l for _, l in v}) > 1]
+    conflicts = [k for k, v in groups.items() if len({label for _, label in v}) > 1]
     if conflicts:
         print(f"[警告] 发现 {len(conflicts)} 组标签冲突，整组剔除并写入 conflict_keys.json")
     keys = sorted(k for k in groups if k not in set(conflicts))
@@ -64,17 +71,19 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     report = {}
     for name, ks in splits.items():
-        flat = [(t, l) for k in ks for (t, l) in groups[k]]
+        flat = [(text, label) for k in ks for (text, label) in groups[k]]
         with open(out / f"{name}.csv", "w", encoding="utf-8", newline="") as f:
             f.write("text,label\n")
-            for t, l in flat:
+            for t, label in flat:
                 # text 含逗号/引号，用csv标准写法
                 escaped = '"' + t.replace('"', '""') + '"'
-                f.write(f"{escaped},{l}\n")
-        report[name] = {"samples": len(flat),
-                        "ham": sum(1 for _, l in flat if l == "ham"),
-                        "spam": sum(1 for _, l in flat if l == "spam")}
-        print(f"[划分] {name}: 样本={len(flat)} 分布={Counter(l for _, l in flat)}")
+                f.write(f"{escaped},{label}\n")
+        report[name] = {
+            "samples": len(flat),
+            "ham": sum(1 for _, label in flat if label == "ham"),
+            "spam": sum(1 for _, label in flat if label == "spam"),
+        }
+        print(f"[划分] {name}: 样本={len(flat)} 分布={Counter(label for _, label in flat)}")
 
     # 验证三集合分组键无重叠
     s_train, s_val, s_test = set(splits["train"]), set(splits["val"]), set(splits["test"])
@@ -82,9 +91,18 @@ def main():
     print("[验收] 三个集合的分组键无重叠 ✔")
 
     with open(out / "split_report.json", "w", encoding="utf-8") as f:
-        json.dump({"seed": args.seed, "skipped": skipped,
-                   "conflict_groups": len(conflicts),
-                   "splits": report}, f, ensure_ascii=False, indent=2)
+        json.dump(
+            {
+                "seed": args.seed,
+                "skipped": skipped,
+                "conflict_groups": len(conflicts),
+                "splits": report,
+            },
+            f,
+            ensure_ascii=False,
+            indent=2,
+        )
+
 
 if __name__ == "__main__":
     main()

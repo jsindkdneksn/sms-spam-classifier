@@ -1,0 +1,17 @@
+.git/
+.venv/
+**/__pycache__/
+**/*.pyc
+.pytest_cache/
+.ruff_cache/
+.dvc/
+**/config.local
+.env*
+data/
+mlruns/
+tests/
+ml/
+*.log
+work/*
+!work/ci-model/
+!work/ci-model/**

@@ -1,0 +1,91 @@
+name: Delivery
+on:
+  push:
+    branches: [staging, main]
+permissions:
+  contents: read
+concurrency:
+  group: delivery-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
+    timeout-minutes: 20
+    env:
+      DVC_REMOTE: ${{ vars.DVC_REMOTE }}
+      AZURE_STORAGE_ACCOUNT: ${{ vars.AZURE_STORAGE_ACCOUNT }}
+      AZURE_SAS_TOKEN: ${{ secrets.AZURE_SAS_TOKEN }}
+      DAGSHUB_USERNAME: ${{ vars.DAGSHUB_USERNAME }}
+      DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements-app.txt -r requirements-dev.txt -r requirements-delivery.txt
+      - run: python -m ruff check . && python -m ruff format --check .
+      - run: python -m scripts.pull_artifacts --include-data
+      - run: python -m pytest -q
+      - run: python -m scripts.verify_release --require-release
+      - if: always()
+        run: rm -f .dvc/config.local
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
+    timeout-minutes: 25
+    env:
+      APP_ENV: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
+      DVC_REMOTE: ${{ vars.DVC_REMOTE }}
+      AZURE_STORAGE_ACCOUNT: ${{ vars.AZURE_STORAGE_ACCOUNT }}
+      AZURE_SAS_TOKEN: ${{ secrets.AZURE_SAS_TOKEN }}
+      DAGSHUB_USERNAME: ${{ vars.DAGSHUB_USERNAME }}
+      DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+      REGISTRY_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements-app.txt -r requirements-delivery.txt
+      - run: python -m scripts.pull_artifacts
+      - run: python -m scripts.verify_release --require-release
+      - name: Create environment file outside build context
+        env:
+          ENV_CONFIG: ${{ secrets.APP_ENV_FILE }}
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          target = Path(os.environ['RUNNER_TEMP']) / 'app.env'
+          if not os.environ.get('ENV_CONFIG'):
+              raise RuntimeError('Set APP_ENV_FILE in this GitHub environment')
+          target.write_text(os.environ['ENV_CONFIG'], encoding='utf-8')
+          target.chmod(0o600)
+          PY
+      - name: Build and verify real image
+        run: |
+          test -n "$REGISTRY_USER"
+          docker build -t "$REGISTRY_USER/sms-spam-classifier:$APP_ENV-$GITHUB_SHA" .
+          docker run -d --name sms-release --env-file "$RUNNER_TEMP/app.env" -e APP_ENV="$APP_ENV" -p 127.0.0.1:8000:8000 "$REGISTRY_USER/sms-spam-classifier:$APP_ENV-$GITHUB_SHA"
+          python -m scripts.smoke_test
+      - uses: docker/login-action@v4.6.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Push tested image and record digest
+        run: |
+          IMAGE="$REGISTRY_USER/sms-spam-classifier"
+          docker push "$IMAGE:$APP_ENV-$GITHUB_SHA"
+          docker tag "$IMAGE:$APP_ENV-$GITHUB_SHA" "$IMAGE:$APP_ENV"
+          docker push "$IMAGE:$APP_ENV"
+          docker inspect --format '{{json .RepoDigests}}' "$IMAGE:$APP_ENV-$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+          python -c "import json; m=json.load(open('models/release/metadata.json')); print('model_version:', m['model_version']); print('model_sha256:', m['model_sha256'])" >> "$GITHUB_STEP_SUMMARY"
+      - if: always()
+        run: |
+          docker logs sms-release || true
+          docker rm -f sms-release || true
+          rm -f "$RUNNER_TEMP/app.env" .dvc/config.local

@@ -1,14 +1,20 @@
-# 数据内容不进 Git（DVC 指针 *.dvc 除外）
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.env
+.env.*
+!.env.example
+.dvc/config.local
+.dvc/cache/
+.dvc-site-cache/
+mlruns/
+work/
+*.joblib
+models/release/
 data/raw/
 data/processed/
 data/v1/
 data/v2/
-# DVC 站点缓存（机器本地，见 .dvc/config.local 的 core.site_cache_dir）
-.dvc-site-cache/
-models/*.joblib
-mlruns/
-.venv/
-__pycache__/
-*.pyc
-.env
-.dvc/config.local
+*.log
