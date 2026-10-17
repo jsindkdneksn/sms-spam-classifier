@@ -1,0 +1,64 @@
+name: CI
+on:
+  pull_request:
+    branches: [dev, staging, main]
+  push:
+    branches: [dev, staging, main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  trust-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require reviewed team branch for credentialed integration
+        env:
+          UNTRUSTED_FORK: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+        run: |
+          if [ "$UNTRUSTED_FORK" = true ]; then
+            echo 'Review this fork and move approved changes to a team branch before merging.'
+            exit 1
+          fi
+  app-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: python -m pip install -r requirements-app.txt -r requirements-dev.txt
+      - run: python -m ruff check .
+      - run: python -m ruff format --check .
+      - run: python -m pytest -q -m 'not requires_remote'
+      - run: python -m scripts.make_ci_model --out-dir work/ci-model
+      - run: docker build --build-arg MODEL_DIR=work/ci-model -t sms-spam:ci .
+      - run: docker run -d --name sms-ci -p 127.0.0.1:8000:8000 -e APP_ENV=development sms-spam:ci
+      - run: python -m scripts.smoke_test
+      - if: always()
+        run: docker logs sms-ci || true; docker rm -f sms-ci || true
+  real-artifacts:
+    # Environment reviewers must approve PR code before releasing read-only credentials.
+    # Make this a required check; a fork must be reviewed and moved to a team branch.
+    needs: trust-gate
+    runs-on: ubuntu-latest
+    environment: integration
+    timeout-minutes: 20
+    env:
+      DVC_REMOTE: ${{ vars.DVC_REMOTE }}
+      AZURE_STORAGE_ACCOUNT: ${{ vars.AZURE_STORAGE_ACCOUNT }}
+      AZURE_SAS_TOKEN: ${{ secrets.AZURE_SAS_TOKEN }}
+      DAGSHUB_USERNAME: ${{ vars.DAGSHUB_USERNAME }}
+      DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements-app.txt -r requirements-dev.txt -r requirements-delivery.txt
+      - run: python -m scripts.pull_artifacts --include-data
+      - run: python -m pytest -q
+      - run: python -m scripts.verify_release --require-release
+      - if: always()
+        run: rm -f .dvc/config.local

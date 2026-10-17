@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SMS · 短信识别</title>
+<style>
+:root{font-family:Inter,"Segoe UI","Microsoft YaHei",sans-serif;color:#193e38;background:#f5f6f0}*{box-sizing:border-box}body{margin:0}main{max-width:850px;margin:64px auto;padding:24px}.brand{font-size:12px;letter-spacing:3px;color:#61786a}.tag{display:inline-block;border:1px solid #bac9bc;border-radius:20px;padding:5px 12px;font-size:12px}h1{font-size:clamp(32px,6vw,52px);letter-spacing:-2px;margin:28px 0 14px}p{color:#64776d;line-height:1.8}.card{margin-top:32px;background:white;border:1px solid #dce2d6;border-radius:20px;padding:28px;box-shadow:0 15px 50px #243c3210}label{font-weight:600;font-size:15px}textarea{display:block;width:100%;resize:vertical;min-height:180px;margin-top:14px;border:1px solid #c8d4c9;border-radius:12px;padding:16px;font:inherit;line-height:1.6;color:#193e38;background:#fcfdf9}textarea:focus{outline:2px solid #5a8a70;outline-offset:2px}.row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px}.muted{font-size:12px;color:#6d7f72}button{cursor:pointer;border:0;border-radius:9px;padding:12px 19px;font:inherit;background:#225747;color:white}button:disabled{opacity:.55;cursor:wait}.example{font-size:12px;background:#edf3e9;color:#335c47;padding:8px 12px}#result{margin-top:24px;padding:20px;border-radius:12px;background:#f1f6ed}#result.spam{background:#fff3e8;color:#80532d}#result h2{margin:0 0 8px;font-size:23px}.track{height:7px;background:#dfe7d9;border-radius:10px;overflow:hidden;margin:14px 0}.bar{height:100%;width:0;background:#387b59}#error{color:#a13532;line-height:1.6}footer{margin-top:23px;font-size:12px;color:#718273}a{color:inherit}[hidden]{display:none!important}
+</style>
+</head>
+<body><main>
+<div class="row"><span class="brand">SMS / CLASSIFIER</span><span class="tag">英文短信识别</span></div>
+<h1>读懂短信，少一点打扰。</h1>
+<p>输入一段英文短信，查看它是否可能是垃圾信息。<br>模型提供辅助判断，结果不应作为删除重要短信的唯一依据。</p>
+<section class="card"><form id="form">
+<label for="text">短信内容</label><textarea id="text" placeholder="Paste an English message here…" aria-describedby="counter" required></textarea>
+<div class="row"><div><button type="button" class="example" data-text="See you at dinner tonight. Call me when you arrive.">试试正常短信</button> <button type="button" class="example" data-text="Congratulations! Claim your free cash prize. Call now!">试试垃圾短信</button></div><span id="counter" class="muted">0 / 5000</span></div>
+<div class="row"><span id="model" class="muted">正在检查服务…</span><button id="submit" type="submit">识别短信 →</button></div>
+</form><p id="error" role="alert" hidden></p>
+<section id="result" aria-live="polite" hidden><h2 id="label"></h2><div id="probability"></div><div class="track"><div class="bar" id="bar"></div></div><span id="version" class="muted"></span></section></section>
+<footer>概率是模型估计值，并非准确率。当前仅支持英文短信。<a href="/docs">API 文档</a></footer>
+</main>
+<script>
+const input=document.querySelector('#text'),error=document.querySelector('#error'),result=document.querySelector('#result'),submit=document.querySelector('#submit');
+const lengthOf=s=>Array.from(s.trim()).length;
+function count(){document.querySelector('#counter').textContent=`${lengthOf(input.value)} / 5000`;}
+input.addEventListener('input',count);
+document.querySelectorAll('[data-text]').forEach(b=>b.addEventListener('click',()=>{input.value=b.dataset.text;count();input.focus();}));
+async function checkHealth(){try{const r=await fetch('/health',{signal:AbortSignal.timeout(10000)});if(!r.ok)throw Error();const h=await r.json();document.querySelector('#model').textContent=h.artifact_kind==='ci-test'?'演示模型 · 尚未接入正式模型':`模型 ${h.model_version}`;}catch{document.querySelector('#model').textContent='服务暂不可用，请稍后重试';}}
+document.querySelector('#form').addEventListener('submit',async e=>{e.preventDefault();error.hidden=true;result.hidden=true;const text=input.value.trim();if(lengthOf(text)<1||lengthOf(text)>5000){error.textContent='请输入 1～5000 个字符的英文短信。';error.hidden=false;return;}submit.disabled=true;submit.textContent='识别中…';try{const response=await fetch('/predict',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text}),signal:AbortSignal.timeout(15000)});if(!response.ok)throw Error(response.status===422?'输入内容不符合要求，请检查后重试。':'模型服务暂不可用，请稍后重试。');const data=await response.json();document.querySelector('#label').textContent=data.label==='spam'?'可能是垃圾短信':'可能是正常短信';document.querySelector('#probability').textContent=`模型估计的垃圾短信概率：${(data.spam_probability*100).toFixed(1)}%`;document.querySelector('#bar').style.width=`${data.spam_probability*100}%`;document.querySelector('#version').textContent=`模型版本：${data.model_version}`;result.className=data.label;result.hidden=false;}catch(e){error.textContent=e.name==='TimeoutError'?'请求超时，请稍后重试。':e.message==='Failed to fetch'?'无法连接服务，请检查网络。':e.message;error.hidden=false;}finally{submit.disabled=false;submit.textContent='识别短信 →';}});
+checkHealth();
+</script></body></html>
