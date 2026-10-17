@@ -1,0 +1,9 @@
+experiment_name: sms-spam
+data_dir: data/v1
+seed: 42
+tfidf:
+  ngram_range: [1, 1]
+  min_df: 2
+classifier:
+  type: naive_bayes        # 可选 naive_bayes / logistic_regression
+  alpha: 1.0

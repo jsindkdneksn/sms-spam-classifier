@@ -1,0 +1,10 @@
+# E2：与 baseline 完全相同的参数，仅数据换成 v2，用于隔离"数据清洗"的净影响
+experiment_name: sms-spam
+data_dir: data/v2
+seed: 42
+tfidf:
+  ngram_range: [1, 1]
+  min_df: 2
+classifier:
+  type: naive_bayes
+  alpha: 1.0
