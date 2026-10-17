@@ -4,3 +4,6 @@
     url = https://dagshub.com/hanss0090/sms-spam-classifier.dvc
 ['remote "origin"']
     url = https://dagshub.com/hanss0090/sms-spam-classifier.dvc
+['remote "myazure"']
+    url = azure://dvc/sms-spam-jsindkdneksn
+    account_name = wut2026
