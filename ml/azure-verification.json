@@ -1,0 +1,15 @@
+{
+  "remote": "myazure",
+  "upload": "passed",
+  "empty_cache_download": "passed",
+  "sha256": {
+    "data/v1/train.csv": "bd75eac7a7ba4fc101e8dcac798dec536f4b50d11abce971582cc28dcebb32da",
+    "data/v1/val.csv": "f7ea99224059e72bde3f6be2e87b4ca5307439ae131bb1e529fb593ec789d632",
+    "data/v1/test.csv": "5b36f69db25247c77dbbc5ee291d9983ac5c86e5484ffb6600d4bff9161bbc35",
+    "data/v2/train.csv": "f4e9f6fb057ece8f4ec2d98a6fc6a147ba656da2eb1df975eeb470c1bc931543",
+    "data/v2/val.csv": "f7ea99224059e72bde3f6be2e87b4ca5307439ae131bb1e529fb593ec789d632",
+    "data/v2/test.csv": "5b36f69db25247c77dbbc5ee291d9983ac5c86e5484ffb6600d4bff9161bbc35",
+    "models/release/model.joblib": "8ae71127dc5c3c2d5436c09773ea4a38690d5b9ce42482133d5eb5368d8f6705",
+    "models/release/metadata.json": "07d5feff31530d448d5a97ba7c178278d807fc36db90bb8652e97bdefa5b956e"
+  }
+}

@@ -2,7 +2,7 @@
 
 ## 当前限制
 
-GitHub 与 PR 已接通，离线 CI 及测试镜像运行通过；正式 DVC 工件已在本机验证。GitHub 远端只读凭证、Azure、Docker Hub 与 staging 主机仍待配置；没有发布正式镜像或部署外部服务。
+GitHub CI、受保护分支必要检查、staging/production 镜像发布均已有成功记录。课程 Azure 两版数据及正式模型已完成上传、独立空缓存下载和逐文件 SHA256 校验。Azure 接入的 GitHub 环境配置及 CI 仍需单独验收；暂无持续部署主机。本机 Docker Desktop 的运行不代表已完成持续自动部署。
 
 ## GitHub 环境
 
@@ -21,7 +21,11 @@ GitHub 与 PR 已接通，离线 CI 及测试镜像运行通过；正式 DVC 工
 | Secret | DOCKERHUB_TOKEN | staging/production 的镜像推送令牌 |
 | Secret | APP_ENV_FILE | staging/production 的多行运行配置 |
 
-Azure 与 DagsHub 凭证只设置所选方案需要的一组。当前 pull_artifacts 若同时发现两者，会优先使用 DagsHub；因此不要为 Azure remote 同时设置 DagsHub 凭证。B 的实际 remote 名和路径必须先核对。
+pull_artifacts 根据所选 remote 的 URL 选择认证：azure:// 使用 Azure，DagsHub HTTPS 使用 DagsHub。两组凭证可并存；不会再因 DAGSHUB_TOKEN 存在而错误地给 Azure 配置 HTTP 认证。
+
+切换 Azure 时，对 integration、staging、production 分别设置 Variables：DVC_REMOTE=myazure、AZURE_STORAGE_ACCOUNT=wut2026；设置 Secret：AZURE_SAS_TOKEN。先添加 SAS，再修改远程选择。保留原 DagsHub 配置，必要时可将 DVC_REMOTE 改回 dagshub。已提交 Azure URL 为 azure://dvc/sms-spam-jsindkdneksn。
+
+本机复核可运行 python -m scripts.azure_handoff，隐藏输入 SAS；成功报告在 work/azure-verification.json，不含凭证。SAS 只写入 .dvc/config.local，此文件不得上传。练习 PDF 含凭证，也不得放进公开仓库。
 
 APP_ENV_FILE 示例（没有密码）：
 
