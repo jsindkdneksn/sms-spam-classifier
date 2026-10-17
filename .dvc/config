@@ -1,0 +1,6 @@
+[core]
+    remote = dagshub
+['remote "dagshub"']
+    url = https://dagshub.com/hanss0090/sms-spam-classifier.dvc
+['remote "origin"']
+    url = https://dagshub.com/hanss0090/sms-spam-classifier.dvc

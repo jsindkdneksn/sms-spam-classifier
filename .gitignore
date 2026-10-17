@@ -1,3 +1,10 @@
+# 数据内容不进 Git（DVC 指针 *.dvc 除外）
+data/raw/
+data/processed/
+data/v1/
+data/v2/
+# DVC 站点缓存（机器本地，见 .dvc/config.local 的 core.site_cache_dir）
+.dvc-site-cache/
 models/*.joblib
 mlruns/
 .venv/
