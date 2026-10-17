@@ -4,37 +4,50 @@
 TF-IDF 只在训练集 fit；仅用验证集输出选择指标；
 自动向 MLflow 记录参数、指标、报告与模型工件。
 """
-import argparse, json, subprocess
+
+import argparse
+import json
+import subprocess
 from pathlib import Path
 
-import joblib, mlflow, mlflow.sklearn, pandas as pd, yaml
+import joblib
+import mlflow
+import mlflow.sklearn
+import pandas as pd
+import yaml
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import (accuracy_score, classification_report,
-                             confusion_matrix, precision_recall_fscore_support)
+from sklearn.metrics import (
+    accuracy_score,
+    classification_report,
+    confusion_matrix,
+    precision_recall_fscore_support,
+)
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.pipeline import Pipeline
 
 
 def build_pipeline(cfg):
-    tfidf = TfidfVectorizer(ngram_range=tuple(cfg["tfidf"]["ngram_range"]),
-                            min_df=cfg["tfidf"]["min_df"])
+    tfidf = TfidfVectorizer(
+        ngram_range=tuple(cfg["tfidf"]["ngram_range"]), min_df=cfg["tfidf"]["min_df"]
+    )
     c = cfg["classifier"]
     if c["type"] == "naive_bayes":
         clf = MultinomialNB(alpha=c.get("alpha", 1.0))
     elif c["type"] == "logistic_regression":
-        clf = LogisticRegression(C=c.get("C", 1.0),
-                                 class_weight=c.get("class_weight"),
-                                 max_iter=c.get("max_iter", 1000),
-                                 random_state=cfg["seed"])
+        clf = LogisticRegression(
+            C=c.get("C", 1.0),
+            class_weight=c.get("class_weight"),
+            max_iter=c.get("max_iter", 1000),
+            random_state=cfg["seed"],
+        )
     else:
         raise ValueError(f"未知分类器类型: {c['type']}")
     return Pipeline([("tfidf", tfidf), ("clf", clf)])
 
 
 def git_sha():
-    return subprocess.check_output(["git", "rev-parse", "HEAD"],
-                                   text=True).strip()
+    return subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
 
 
 def main():
@@ -54,19 +67,25 @@ def main():
         mlflow.log_param("dataset_dir", cfg["data_dir"])
 
         pipe = build_pipeline(cfg)
-        pipe.fit(train["text"], train["label"])   # TF-IDF 只在训练集 fit
+        pipe.fit(train["text"], train["label"])  # TF-IDF 只在训练集 fit
 
         pred = pipe.predict(val["text"])
         p, r, f1, _ = precision_recall_fscore_support(
-            val["label"], pred, labels=["spam"], zero_division=0)
+            val["label"], pred, labels=["spam"], zero_division=0
+        )
         acc = accuracy_score(val["label"], pred)
-        metrics = {"val_spam_precision": p[0], "val_spam_recall": r[0],
-                   "val_spam_f1": f1[0], "val_accuracy": acc}
+        metrics = {
+            "val_spam_precision": p[0],
+            "val_spam_recall": r[0],
+            "val_spam_f1": f1[0],
+            "val_accuracy": acc,
+        }
         mlflow.log_metrics(metrics)
-        mlflow.log_text(classification_report(val["label"], pred),
-                        "classification_report.txt")
-        mlflow.log_text(json.dumps(confusion_matrix(val["label"], pred,
-                     labels=["ham", "spam"]).tolist()), "confusion_matrix.json")
+        mlflow.log_text(classification_report(val["label"], pred), "classification_report.txt")
+        mlflow.log_text(
+            json.dumps(confusion_matrix(val["label"], pred, labels=["ham", "spam"]).tolist()),
+            "confusion_matrix.json",
+        )
 
         out = Path(args.out)
         out.parent.mkdir(parents=True, exist_ok=True)
