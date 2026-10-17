@@ -53,6 +53,7 @@ def git_sha():
 def dataset_dvc_md5(data_dir: str):
     """读取 data/<版本>.dvc 指针中的 md5，作为数据版本哈希记录到 run。"""
     import yaml as _yaml
+
     pointer = Path(f"{data_dir}.dvc")
     if not pointer.exists():
         return None
