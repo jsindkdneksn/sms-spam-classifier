@@ -50,6 +50,16 @@ def git_sha():
     return subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
 
 
+def dataset_dvc_md5(data_dir: str):
+    """读取 data/<版本>.dvc 指针中的 md5，作为数据版本哈希记录到 run。"""
+    import yaml as _yaml
+    pointer = Path(f"{data_dir}.dvc")
+    if not pointer.exists():
+        return None
+    info = _yaml.safe_load(open(pointer, encoding="utf-8"))
+    return info["outs"][0]["md5"]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", required=True)
@@ -65,6 +75,7 @@ def main():
         mlflow.log_params({"config": json.dumps(cfg, sort_keys=True)})
         mlflow.log_param("git_sha", git_sha())
         mlflow.log_param("dataset_dir", cfg["data_dir"])
+        mlflow.log_param("dataset_dvc_md5", dataset_dvc_md5(cfg["data_dir"]))
 
         pipe = build_pipeline(cfg)
         pipe.fit(train["text"], train["label"])  # TF-IDF 只在训练集 fit
