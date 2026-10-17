@@ -1,8 +1,12 @@
-"""tests/test_preprocessing.py —— 数据/分组键检查（B 负责）"""
+"""tests/test_preprocessing.py —— 数据/分组键检查（B 负责，需 DVC 拉取的工件）"""
 
 import csv
 import json
 import re
+
+import pytest
+
+pytestmark = pytest.mark.requires_remote  # 整份文件依赖 data/v1、data/v2 工件
 
 
 def norm_key(t):
@@ -33,7 +37,8 @@ def test_no_group_key_overlap_between_splits():
 
 def test_split_report_matches_files():
     # split_report 描述的是原始 70/15/15 划分（v1），v1 未做去重，数量应一致
-    report = json.load(open("data/processed/split_report.json", encoding="utf-8"))
+    # 报告随 Git 分发（ml/split_report.json），不依赖 data/processed
+    report = json.load(open("ml/split_report.json", encoding="utf-8"))
     for name in ("train", "val", "test"):
         assert len(read_split(name, version="v1")) == report["splits"][name]["samples"]
 

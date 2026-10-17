@@ -1,14 +1,18 @@
 """tests/test_model_artifact.py —— 模型工件契约检查（B 负责）"""
 
 import json
+import subprocess
+import sys
 from pathlib import Path
 
 import joblib
 import numpy as np
+import pytest
 
 RELEASE = Path("models/release")
 
 
+@pytest.mark.requires_remote  # 依赖 models/release 正式工件（DVC 拉取）
 def test_release_files_exist_and_valid():
     assert (RELEASE / "model.joblib").exists()
     meta = json.load(open(RELEASE / "metadata.json", encoding="utf-8"))
@@ -20,6 +24,7 @@ def test_release_files_exist_and_valid():
     )
 
 
+@pytest.mark.requires_remote
 def test_pipeline_contract():
     pipe = joblib.load(RELEASE / "model.joblib")
     assert hasattr(pipe, "predict") and hasattr(pipe, "predict_proba")
@@ -35,6 +40,7 @@ def test_pipeline_contract():
         assert 0.0 <= proba[idx] <= 1.0
 
 
+@pytest.mark.requires_remote
 def test_save_load_consistency(tmp_path):
     pipe = joblib.load(RELEASE / "model.joblib")
     p = tmp_path / "m.joblib"
@@ -45,9 +51,6 @@ def test_save_load_consistency(tmp_path):
 
 def test_offline_test_model(tmp_path):
     # 供 CI 离线使用的小型确定性测试模型：结构合法即可，不代表模型质量
-    import subprocess
-    import sys
-
     out = tmp_path / "test_model.joblib"
     subprocess.run([sys.executable, "ml/make_test_model.py", str(out)], check=True)
     pipe = joblib.load(out)
