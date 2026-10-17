@@ -4,11 +4,11 @@
 
 ## 当前阶段
 
-项目保留 B 的 main（89b3625）历史，A 功能在 GitHub 草稿 PR #1 中。已拉取并校验 B 的 model-v1 与 v1/v2 数据，51 项本地测试全部通过；正式模型已通过 production 模式本地 HTTP 检查。交接核查见 HANDOFF.md。
+项目保留 B 的 Git 历史，应用已沿 feature → dev → staging → main 集成，staging/production 镜像发布已通过。model-v1 与两版数据已完成课程 Azure Blob Storage 上传及独立空缓存下载，8 个文件 SHA256 全部匹配。本次 Azure 接入含 55 项通过的本地测试；远端 CI 是否使用 Azure，仍需以环境配置及实际运行记录为准。交接核查见 HANDOFF.md，数据版本与配置见 ml/README_data.md。
 
 - A：应用、测试、Docker、GitHub Actions 和交付文档。
 - B：数据、DVC/Azure、训练、MLflow、模型及来源信息。
-- 待完成：Azure 配置、GitHub 远端工件凭证与分支保护、正式环境发布、staging 持续部署。
+- 待完成：GitHub 环境切换 Azure 并验证、staging 持续部署，以及 B 补充原始数据下载来源与许可。
 
 ## 本地运行（PowerShell）
 
