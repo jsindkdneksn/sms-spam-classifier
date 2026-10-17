@@ -1,7 +1,6 @@
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
-addopts = "--basetemp=work/pytest-temp"
 markers = ["requires_remote: validates the real B handoff and requires DVC artifacts"]
 
 [tool.ruff]
