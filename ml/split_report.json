@@ -1,0 +1,22 @@
+{
+  "seed": 42,
+  "skipped": 0,
+  "conflict_groups": 0,
+  "splits": {
+    "train": {
+      "samples": 3898,
+      "ham": 3371,
+      "spam": 527
+    },
+    "val": {
+      "samples": 841,
+      "ham": 739,
+      "spam": 102
+    },
+    "test": {
+      "samples": 835,
+      "ham": 717,
+      "spam": 118
+    }
+  }
+}
