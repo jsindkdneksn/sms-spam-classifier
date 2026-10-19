@@ -3,7 +3,6 @@
 用法: python ml/sync_runs_to_local.py [本地存储目录，默认 ./mlruns]
 说明: 只读取远端并写入本地，不修改 DagsHub 上的任何 run。
 """
-import os
 import shutil
 import sys
 import tempfile
