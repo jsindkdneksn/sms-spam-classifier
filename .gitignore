@@ -10,9 +10,12 @@ __pycache__/
 .dvc/cache/
 .dvc-site-cache/
 mlruns/
+mlruns-view/
+mlflow.db
 work/
 *.joblib
 models/release/
+models/experiments/
 data/raw/
 data/processed/
 data/v1/
