@@ -90,18 +90,21 @@ def main():
     assert not (s_train & s_val) and not (s_train & s_test) and not (s_val & s_test)
     print("[验收] 三个集合的分组键无重叠 ✔")
 
+    report_payload = {
+        "seed": args.seed,
+        "skipped": skipped,
+        "conflict_groups": len(conflicts),
+        "splits": report,
+    }
     with open(out / "split_report.json", "w", encoding="utf-8") as f:
-        json.dump(
-            {
-                "seed": args.seed,
-                "skipped": skipped,
-                "conflict_groups": len(conflicts),
-                "splits": report,
-            },
-            f,
-            ensure_ascii=False,
-            indent=2,
-        )
+        json.dump(report_payload, f, ensure_ascii=False, indent=2)
+
+    # 同一份报告另存到 ml/（进入 Git）：统计元数据而非原始数据，
+    # 使 CI 等干净环境无需拉取 data/processed 也能做划分一致性校验
+    ml_dir = Path("ml")
+    ml_dir.mkdir(parents=True, exist_ok=True)
+    with open(ml_dir / "split_report.json", "w", encoding="utf-8") as f:
+        json.dump(report_payload, f, ensure_ascii=False, indent=2)
 
 
 if __name__ == "__main__":
